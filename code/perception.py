@@ -7,14 +7,14 @@ def color_thresh(img, lower_rgb=(160, 160, 160), upper_rgb=(255,255,255)):
     # Create an array of zeros same xy size as img, but single channel
     return cv2.inRange(img, lower_rgb[::-1], upper_rgb[::-1])
 
-# Define a function to convert to rover-centric coordinates
+# Define a function to convert from image coords to rover coords
 def rover_coords(binary_img):
     # Identify nonzero pixels
     ypos, xpos = binary_img.nonzero()
     # Calculate pixel positions with reference to the rover position being at the 
     # center bottom of the image.  
-    x_pixel = np.absolute(ypos - binary_img.shape[0]).astype(np.float)
-    y_pixel = -(xpos - binary_img.shape[0]).astype(np.float)
+    x_pixel = -(ypos - binary_img.shape[0]).astype(np.float)
+    y_pixel = -(xpos - binary_img.shape[1]/2 ).astype(np.float)
     return x_pixel, y_pixel
 
 
@@ -28,23 +28,23 @@ def to_polar_coords(x_pixel, y_pixel):
     angles = np.arctan2(y_pixel, x_pixel)
     return dist, angles
 
-# Define a function to apply a rotation to pixel positions
+# Define a function to map rover space pixels to world space
 def rotate_pix(xpix, ypix, yaw):
-    # TODO:
     # Convert yaw to radians
-    # Apply a rotation
-    xpix_rotated = 0
-    ypix_rotated = 0
+    yaw_rad = yaw * np.pi / 180
+    xpix_rotated = (xpix * np.cos(yaw_rad)) - (ypix * np.sin(yaw_rad))
+                            
+    ypix_rotated = (xpix * np.sin(yaw_rad)) + (ypix * np.cos(yaw_rad))
     # Return the result  
     return xpix_rotated, ypix_rotated
 
-# Define a function to perform a translation
 def translate_pix(xpix_rot, ypix_rot, xpos, ypos, scale): 
     # Apply a scaling and a translation
     xpix_translated = (xpix_rot / scale) + xpos
     ypix_translated = (ypix_rot / scale) + ypos
     # Return the result  
     return xpix_translated, ypix_translated
+
 
 # Define a function to apply rotation and translation (and clipping)
 # Once you define the two functions above this function should work
