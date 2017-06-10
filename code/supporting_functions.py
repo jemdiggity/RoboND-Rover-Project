@@ -21,6 +21,7 @@ def update_rover(Rover, data):
                   Rover.total_time = tot_time
       # Print out the fields in the telemetry data dictionary
       print(data.keys())
+      print(data["position"])
       # The current speed of the rover in m/s
       Rover.vel = np.float(data["speed"])
       # The current position of the rover
@@ -42,7 +43,7 @@ def update_rover(Rover, data):
       
       print('speed =',Rover.vel, 'position =', Rover.pos, 'throttle =', 
       Rover.throttle, 'steer_angle =', Rover.steer, 'near_sample', Rover.near_sample, 
-      'picking_up', data["picking_up"])
+      'picking_up', data["picking_up"], 'state =', Rover.state)
 
       # Get the current image from the center camera of the rover
       imgString = data["image"]
@@ -74,7 +75,7 @@ def create_output_images(Rover):
       plotmap[:, :, 2] = navigable
       plotmap = plotmap.clip(0, 255)
       # Overlay obstacle and navigable terrain map with ground truth map
-      map_add = cv2.addWeighted(plotmap, 1, Rover.ground_truth, 0.5, 0)
+      map_add = cv2.addWeighted(plotmap, 1, Rover.ground_truth, 0, 0)
 
       # Check whether any rock detections are present in worldmap
       rock_world_pos = Rover.worldmap[:,:,1].nonzero()
