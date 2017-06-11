@@ -1,4 +1,5 @@
 .DS_Store
 code/__pycache__/
 code/.ipynb_checkpoints/
-output/
+test_dataset/
+.ipynb_checkpoints/

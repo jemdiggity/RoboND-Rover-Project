@@ -1,10 +1,10 @@
 import numpy as np
 import time
 
-def steer(Rover, angles, bias=0):
+def steer(Rover, angles, bias=0, offset=0):
     Rover.steer_array = np.roll(Rover.steer_array,1)
     Rover.steer_array[0] = np.clip(np.mean(angles * 180/np.pi) +
-        bias*np.std(angles * 180/np.pi), -15, 15)
+        bias*np.std(angles * 180/np.pi), -15, 15) + offset
     return np.dot(Rover.steer_array, Rover.steer_filter)
 
 def steer_clear(Rover, value=0):
@@ -48,9 +48,10 @@ def decision_step(Rover):
         if not Rover.picking_up:
             Rover.state = 'forward'
     elif Rover.state == 'stuck!':
-        output(Rover, -1*Rover.throttle_set, 0, 0, True)
+        output(Rover, -0.5, 0, 0, True)
         if time.time() - Rover.stuck_at > 4:
             Rover.state = 'stop'
+            Rover.last_time = time.time()
     elif Rover.state == 'forward':
         if not np.allclose(Rover.pos, Rover.last_pos, atol=0.2):
             Rover.last_pos = np.copy(Rover.pos)
@@ -64,11 +65,11 @@ def decision_step(Rover):
             Rover.stuck_at = time.time()
             output(Rover, 0, 0, 0, True)
         elif Rover.nav_angles is not None:
-            if Rover.near_sample or len(Rover.rock_dists):
+            if Rover.near_sample or (len(Rover.rock_dists) and np.mean(Rover.rock_angles * 180/np.pi) > 0):
                 output(Rover, 0, Rover.brake_set, 0, True)
                 Rover.state = 'stop before rock'
             elif len(Rover.nav_angles) >= Rover.stop_forward:  
-                output(Rover, Rover.throttle_set if Rover.vel < Rover.max_vel else 0, 0, steer(Rover, Rover.nav_angles, 0.5))
+                output(Rover, Rover.throttle_set if Rover.vel < Rover.max_vel else 0, 0, steer(Rover, Rover.nav_angles, 0.75))
             elif len(Rover.nav_angles) < Rover.stop_forward:
                 output(Rover, 0, 1, 0, True)
                 Rover.state = 'stop'
@@ -76,8 +77,10 @@ def decision_step(Rover):
         if Rover.vel <= 0.2:
             Rover.state = 'seek rock'
             output(Rover, 0, 0, 0, True)
-        elif Rover.vel > 0.2:
+        elif Rover.vel > 0.5:
             output(Rover, 0, Rover.brake_set, 0, True)
+        else:
+            output(Rover, 0, 0, 0, True)
     elif Rover.state == 'seek rock':
         if not np.allclose(Rover.pos, Rover.last_pos, atol=0.2):
             Rover.last_pos = np.copy(Rover.pos)
@@ -91,7 +94,17 @@ def decision_step(Rover):
             Rover.stuck_at = time.time()
             output(Rover, 0, 0, 0, True)
         elif len(Rover.rock_angles):
-            output(Rover, Rover.throttle_set if Rover.vel < 0.5 * Rover.max_vel else 0, 0, steer(Rover, Rover.rock_angles))
+            if np.mean(Rover.rock_dists) < 5:
+                output(Rover,
+                       Rover.throttle_set if Rover.vel < 0.25 * Rover.max_vel else 0,
+                       0,
+                       steer(Rover, Rover.rock_angles, bias=0, offset=-2))
+            else:
+                output(Rover,
+                       Rover.throttle_set if Rover.vel < 0.25 * Rover.max_vel else 0,
+                       0,
+                       steer(Rover, Rover.rock_angles, bias=0, offset=-10))
+                
         else:
             Rover.state = 'forward'
             output(Rover, 0, 0, 0)
